@@ -1,0 +1,29 @@
+# Entorno de Python embebido (Muy pesado, no subir a GitHub)
+mask/python/
+python/
+
+# Modelo de IA original (muy pesado, se sube fragmentado)
+mask_detector_trained.h5
+mask/mask_detector_trained.h5
+
+# Archivos de caché de Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de log
+*.log
+predictions.log
+
+# Entornos virtuales estándar
+venv/
+.venv/
+env/
+.env
+
+# Carpetas del sistema o editores
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
