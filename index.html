@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detector de Máscaras Faciales - Inteligencia Artificial en Tiempo Real</title>
+  <meta name="description" content="Detector de máscaras faciales en tiempo real basado en inteligencia artificial. Escanea con tu cámara web para verificar si llevas mascarilla con alta precisión.">
+  
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Vanilla CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="background-glow" aria-hidden="true"></div>
+  
+  <div class="app-container">
+    <header class="app-header">
+      <div class="logo-area">
+        <span class="logo-emoji">😷</span>
+        <h1 id="main-title">Detector de Máscaras</h1>
+      </div>
+      <p class="app-subtitle">Sistema inteligente de verificación de protección facial en tiempo real</p>
+    </header>
+
+    <main class="app-main-layout">
+      <!-- Sección izquierda: Feed de cámara y controles -->
+      <section class="camera-card glass-panel" aria-labelledby="camera-section-title">
+        <h2 id="camera-section-title" class="sr-only">Cámara y Escaneo</h2>
+        
+        <div class="video-wrapper">
+          <video id="webcam-video" autoplay playsinline muted width="640" height="480"></video>
+          <canvas id="detection-canvas" width="640" height="480"></canvas>
+          
+          <div id="video-placeholder" class="video-placeholder-overlay">
+            <div class="placeholder-content">
+              <div class="pulse-icon">📷</div>
+              <p>La cámara está apagada</p>
+              <span class="instruction-text">Presiona "Iniciar Cámara" para comenzar</span>
+            </div>
+          </div>
+          
+          <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Procesando fotograma...</p>
+          </div>
+        </div>
+
+        <div class="controls-panel">
+          <button id="btn-toggle-camera" class="btn btn-primary">
+            <span class="btn-icon">📹</span>
+            <span id="btn-camera-text">Iniciar Cámara</span>
+          </button>
+          
+          <button id="btn-single-capture" class="btn btn-secondary" disabled>
+            <span class="btn-icon">📸</span>
+            <span>Escanear una vez</span>
+          </button>
+
+          <div class="scan-mode-toggle">
+            <label class="switch-container">
+              <input type="checkbox" id="switch-continuous" disabled>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="toggle-label" id="continuous-label">Escaneo Continuo</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sección derecha: Panel de resultados e información -->
+      <section class="results-card glass-panel" aria-labelledby="results-section-title">
+        <h2 id="results-section-title" class="card-title">Panel de Control</h2>
+        
+        <div class="status-indicator">
+          <span class="status-label">Estado del Sistema:</span>
+          <div id="system-status-badge" class="status-badge status-offline">Conexión Inactiva</div>
+        </div>
+
+        <div class="results-container">
+          <h3 class="results-heading">Resultados de Detección</h3>
+          
+          <div id="no-results-placeholder" class="no-results">
+            <p>Activa la cámara e inicia el escaneo para ver los resultados.</p>
+          </div>
+
+          <div id="results-list" class="results-list hidden">
+            <!-- Los resultados dinámicos se insertarán aquí por JavaScript -->
+          </div>
+        </div>
+
+        <div class="stats-panel">
+          <h3 class="stats-heading">Estadísticas</h3>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <span class="stat-name">Personas</span>
+              <span id="stat-people-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-name">Latencia</span>
+              <span id="stat-latency" class="stat-value">0 ms</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-name">Estado del Modelo</span>
+              <span id="stat-model-status" class="stat-value text-warning">Verificando...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Desplegado en Vercel con tecnología Serverless & TensorFlow Lite</p>
+    </footer>
+  </div>
+
+  <!-- Vanilla JS logic -->
+  <script src="app.js"></script>
+</body>
+</html>
