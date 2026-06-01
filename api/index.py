@@ -5,14 +5,17 @@ import cv2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# Intentar cargar tflite_runtime (ideal para Vercel) o fallback a tensorflow.lite (local)
+# Intentar cargar ai_edge_litert (sucesor de tflite_runtime), tflite_runtime o fallback a tensorflow.lite (local)
 try:
-    import tflite_runtime.interpreter as tflite
+    import ai_edge_litert.interpreter as tflite
 except ImportError:
     try:
-        import tensorflow.lite as tflite
+        import tflite_runtime.interpreter as tflite
     except ImportError:
-        raise ImportError("No se encontró el intérprete de TensorFlow Lite. Instala tflite-runtime o tensorflow.")
+        try:
+            import tensorflow.lite as tflite
+        except ImportError:
+            raise ImportError("No se encontró el intérprete de TensorFlow Lite o LiteRT. Instala ai-edge-litert, tflite-runtime o tensorflow.")
 
 app = Flask(__name__)
 CORS(app) # Habilitar CORS para pruebas locales
