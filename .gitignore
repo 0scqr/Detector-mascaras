@@ -12,8 +12,18 @@ mask/mask_detector_trained.h5.part1
 mask/mask_detector_trained.h5.part2
 mask/mask_detector_trained.h5.part3
 
-# ── El modelo .tflite SÍ se sube a GitHub (73 MB, bajo límite) ──
+# ── El modelo .tflite SÍ se sube (lo necesita el navegador para TF.js) ──
 # mask_detector_trained.tflite  <-- NO ignorar
+
+# ── Backend Python (ya no se usa, todo corre en el navegador) ──
+# api/       <-- mantener por si se necesita referencia
+Detector.py
+Web_Detector.py
+requirements.txt
+Ejecutar_Detector.bat
+Iniciar_Servidor.bat
+subir_todo.ps1
+convert_tflite_to_tfjs.py
 
 # ── Caché de Python ──
 **/__pycache__/

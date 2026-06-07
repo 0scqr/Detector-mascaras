@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Detector de Máscaras Faciales - Inteligencia Artificial en Tiempo Real</title>
   <meta name="description" content="Detector de máscaras faciales en tiempo real basado en inteligencia artificial. Escanea con tu cámara web para verificar si llevas mascarilla con alta precisión.">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="0">
   
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,17 +15,32 @@
   
   <!-- Vanilla CSS Stylesheet -->
   <link rel="stylesheet" href="style.css">
+
+  <!-- TensorFlow.js core -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <!-- TFLite runtime para cargar .tflite directamente en el navegador -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.9/dist/tf-tflite.min.js"></script>
+  <!-- BlazeFace — detector de rostros ligero (~2 MB) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.min.js"></script>
 </head>
 <body>
   <div class="background-glow" aria-hidden="true"></div>
   
   <div class="app-container">
     <header class="app-header">
-      <div class="logo-area">
-        <span class="logo-emoji">😷</span>
-        <h1 id="main-title">Detector de Máscaras</h1>
+      <div class="header-left">
+        <div class="logo-area">
+          <span class="logo-emoji">😷</span>
+          <h1 id="main-title">Detector de Máscaras</h1>
+        </div>
+        <p class="app-subtitle">Sistema inteligente de verificación de protección facial en tiempo real</p>
       </div>
-      <p class="app-subtitle">Sistema inteligente de verificación de protección facial en tiempo real</p>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Cambiar tema">
+        <span class="toggle-track">
+          <span class="toggle-knob"></span>
+        </span>
+        <span id="theme-label" class="theme-label">Oscuro</span>
+      </button>
     </header>
 
     <main class="app-main-layout">
@@ -76,7 +93,7 @@
         
         <div class="status-indicator">
           <span class="status-label">Estado del Sistema:</span>
-          <div id="system-status-badge" class="status-badge status-offline">Conexión Inactiva</div>
+          <div id="system-status-badge" class="status-badge status-offline">Cargando modelos...</div>
         </div>
 
         <div class="results-container">
@@ -104,7 +121,7 @@
             </div>
             <div class="stat-box">
               <span class="stat-name">Estado del Modelo</span>
-              <span id="stat-model-status" class="stat-value text-warning">Verificando...</span>
+              <span id="stat-model-status" class="stat-value text-warning">Cargando...</span>
             </div>
           </div>
         </div>
@@ -112,11 +129,11 @@
     </main>
 
     <footer class="app-footer">
-      <p>Desplegado en Vercel con tecnología Serverless & TensorFlow Lite</p>
+      <p>Desplegado en Vercel · Inferencia 100% en el navegador con TensorFlow.js</p>
     </footer>
   </div>
 
-  <!-- Vanilla JS logic -->
+  <!-- Vanilla JS logic (TF.js, sin backend Python) -->
   <script src="app.js"></script>
 </body>
 </html>
