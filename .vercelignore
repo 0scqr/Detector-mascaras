@@ -1,0 +1,18 @@
+# Excluir scripts de Python locales (no necesarios en Vercel)
+Detector.py
+Web_Detector.py
+
+# Excluir scripts de ejecución local
+Ejecutar_Detector.bat
+Iniciar_Servidor.bat
+subir_todo.ps1
+
+# Excluir archivos de modelo pesados .h5 fragmentados (solo necesitamos el .tflite en frontend)
+mask_detector_trained.h5
+mask_detector_trained.h5.part1
+mask_detector_trained.h5.part2
+mask_detector_trained.h5.part3
+
+# Excluir documentos
+Informe_Sistema_Detector_Mascaras.docx
+predictions.log
