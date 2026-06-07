@@ -95,7 +95,7 @@ async function loadModels() {
 
     // Configurar la ruta del WASM de TFLite
     tflite.setWasmPath(
-      'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.9/wasm/'
+      'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.9/dist/'
     );
 
     state.maskModel    = await tflite.loadTFLiteModel('./mask_detector_trained.tflite');
