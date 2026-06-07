@@ -5,143 +5,166 @@ import cv2
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# Intentar cargar tflite_runtime primero (compatible con Vercel serverless),
-# luego ai_edge_litert (local), finalmente tensorflow.lite como fallback
-try:
-    import tflite_runtime.interpreter as tflite
-except ImportError:
-    try:
-        import ai_edge_litert.interpreter as tflite
-    except ImportError:
-        try:
-            import tensorflow.lite as tflite
-        except ImportError:
-            raise ImportError("No se encontró el intérprete de TensorFlow Lite. Instala tflite-runtime, ai-edge-litert o tensorflow.")
-
 app = Flask(__name__)
-CORS(app) # Habilitar CORS para pruebas locales
+CORS(app)
 
-# Ruta absoluta del modelo TFLite
-# En Vercel, __file__ está en /var/task/api/index.py, el modelo está en /var/task/
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, 'mask_detector_trained.tflite')
-
-# Fallback: buscar en directorio actual si BASE_DIR no funciona
-if not os.path.exists(MODEL_PATH):
-    MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mask_detector_trained.tflite')
-    MODEL_PATH = os.path.normpath(MODEL_PATH)
-
-# Inicializar Intérprete TFLite
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(f"No se encontró el modelo TFLite en {MODEL_PATH}")
-
-interpreter = tflite.Interpreter(model_path=MODEL_PATH)
-interpreter.allocate_tensors()
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-
-input_dtype = input_details[0]['dtype']
-input_quant = input_details[0].get('quantization', (0, 0))
-input_scale, input_zero_point = input_quant if input_quant != (0, 0) else (1.0, 0)
-print(f"[Modelo] dtype entrada: {input_dtype}, cuantización: escala={input_scale}, cero={input_zero_point}")
-print(f"[Modelo] forma entrada: {input_details[0]['shape']}")
-print(f"[Modelo] dtype salida: {output_details[0]['dtype']}")
-
-# Ruta al clasificador Haar Cascade incluido en el proyecto
+# ── Rutas de archivos ────────────────────────────────────────────────────────
+# En Vercel: __file__ = /var/task/api/index.py  →  BASE_DIR = /var/task/
+BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH   = os.path.join(BASE_DIR, 'mask_detector_trained.tflite')
 CASCADE_PATH = os.path.join(BASE_DIR, 'haarcascade_frontalface_default.xml')
 
-# Fallback: usar el integrado en OpenCV si no se encuentra en el proyecto
-if not os.path.exists(CASCADE_PATH):
-    CASCADE_PATH = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+# ── Variables globales (carga lazy para evitar timeout en cold-start) ────────
+_interpreter   = None
+_input_details = None
+_output_details = None
+_input_dtype   = None
+_input_scale   = 1.0
+_input_zero    = 0
+_face_cascade  = None
 
-face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
 
+def get_interpreter():
+    """Carga el intérprete TFLite la primera vez que se llama (lazy loading)."""
+    global _interpreter, _input_details, _output_details
+    global _input_dtype, _input_scale, _input_zero
+
+    if _interpreter is not None:
+        return _interpreter
+
+    # Importar TFLite: tensorflow-cpu incluye tf.lite
+    try:
+        import tensorflow as tf
+        Interpreter = tf.lite.Interpreter
+    except ImportError:
+        raise ImportError(
+            "tensorflow-cpu no está instalado. "
+            "Asegúrate de que requirements.txt incluye tensorflow-cpu."
+        )
+
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Modelo no encontrado en: {MODEL_PATH}")
+
+    _interpreter = Interpreter(model_path=MODEL_PATH)
+    _interpreter.allocate_tensors()
+    _input_details  = _interpreter.get_input_details()
+    _output_details = _interpreter.get_output_details()
+
+    _input_dtype  = _input_details[0]['dtype']
+    quant = _input_details[0].get('quantization', (0, 0))
+    _input_scale, _input_zero = quant if quant != (0, 0) else (1.0, 0)
+
+    print(f"[Modelo] dtype={_input_dtype}, shape={_input_details[0]['shape']}, "
+          f"escala={_input_scale}, cero={_input_zero}")
+    return _interpreter
+
+
+def get_face_cascade():
+    """Carga el clasificador Haar Cascade la primera vez que se llama."""
+    global _face_cascade
+    if _face_cascade is not None:
+        return _face_cascade
+
+    path = CASCADE_PATH
+    if not os.path.exists(path):
+        # Fallback al cascade integrado en OpenCV
+        path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+
+    _face_cascade = cv2.CascadeClassifier(path)
+    return _face_cascade
+
+
+# ── Rutas Flask ──────────────────────────────────────────────────────────────
 
 @app.route('/api/detect', methods=['POST'])
 def detect_mask():
     try:
+        interp = get_interpreter()
+        cascade = get_face_cascade()
+
         data = request.get_json()
         if not data or 'image' not in data:
             return jsonify({"success": False, "error": "No image data provided"}), 400
-        
-        # Procesar la imagen base64
+
+        # Decodificar imagen base64
         image_b64 = data['image']
         if ',' in image_b64:
             image_b64 = image_b64.split(',')[1]
-            
+
         img_bytes = base64.b64decode(image_b64)
         nparr = np.frombuffer(img_bytes, np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
+
         if frame is None:
             return jsonify({"success": False, "error": "Failed to decode image"}), 400
-            
+
         # Detectar rostros
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(60, 60)
+        gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
         )
-        
+
         results = []
         for (x, y, w, h) in faces:
-            # Extraer ROI
             face_roi = frame[y:y+h, x:x+w]
-            
-            # Preprocesar rostro para el modelo: RGB, 224x224, normalizar a [0,1]
+
+            # Preprocesar: RGB, 224×224, normalizar [0,1]
             face_img = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
             face_img = cv2.resize(face_img, (224, 224))
             face_img = face_img.astype("float32") / 255.0
             face_img = np.expand_dims(face_img, axis=0)
-            
-            # Si el modelo espera entrada cuantizada (uint8), convertir
-            if input_dtype == np.uint8:
-                face_img = (face_img / input_scale + input_zero_point).astype(np.uint8)
-            
-            # Correr inferencia TFLite
-            interpreter.set_tensor(input_details[0]['index'], face_img)
-            interpreter.invoke()
-            pred = interpreter.get_tensor(output_details[0]['index'])[0][0]
-            
-            # Interpretar predicción (umbral 0.7 para reducir falsos positivos)
+
+            # Cuantización si el modelo lo requiere
+            if _input_dtype == np.uint8:
+                face_img = (face_img / _input_scale + _input_zero).astype(np.uint8)
+
+            # Inferencia TFLite
+            interp.set_tensor(_input_details[0]['index'], face_img)
+            interp.invoke()
+            pred = float(interp.get_tensor(_output_details[0]['index'])[0][0])
+
             if pred > 0.7:
-                label = "CON MASCARA"
-                confidence = float(pred * 100)
+                label      = "CON MASCARA"
+                confidence = pred * 100
             else:
-                label = "SIN MASCARA"
-                confidence = float((1 - pred) * 100)
-                
+                label      = "SIN MASCARA"
+                confidence = (1 - pred) * 100
+
             results.append({
-                "box": [int(x), int(y), int(w), int(h)],
-                "label": label,
-                "confidence": confidence,
-                "raw_pred": float(pred)
+                "box":        [int(x), int(y), int(w), int(h)],
+                "label":      label,
+                "confidence": round(confidence, 2),
+                "raw_pred":   round(pred, 4)
             })
-            
-        return jsonify({
-            "success": True,
-            "faces": results
-        })
-        
+
+        return jsonify({"success": True, "faces": results})
+
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        import traceback
+        return jsonify({"success": False, "error": str(e),
+                        "trace": traceback.format_exc()}), 500
+
 
 @app.route('/api/health', methods=['GET'])
 def health():
+    model_exists = os.path.exists(MODEL_PATH)
     return jsonify({
-        "status": "healthy",
-        "model_loaded": os.path.exists(MODEL_PATH),
-        "model_size_mb": os.path.getsize(MODEL_PATH) / (1024 * 1024) if os.path.exists(MODEL_PATH) else 0
+        "status":        "healthy",
+        "model_found":   model_exists,
+        "model_size_mb": round(os.path.getsize(MODEL_PATH) / (1024 * 1024), 2)
+                         if model_exists else 0,
+        "base_dir":      BASE_DIR,
+        "model_path":    MODEL_PATH,
     })
 
-# Ruta comodín para que Vercel sirva Flask en /api/
+
+# Ruta comodín — devuelve 404 para rutas API desconocidas
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
-    return jsonify({"success": False, "error": f"API Route not found: {path}"}), 404
+    return jsonify({"success": False, "error": f"Ruta no encontrada: /{path}"}), 404
+
 
 if __name__ == '__main__':
-    print("Iniciando servidor de desarrollo en http://127.0.0.1:5000")
+    print("Servidor de desarrollo en http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
